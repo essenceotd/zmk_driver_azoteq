@@ -114,6 +114,18 @@ properties:
     required: false
     description: Enable two-finger tap gesture
 
+  three-finger-tap:
+    type: boolean
+    required: false
+    description: |
+      Report a middle click (BTN_2) instead of a right click (BTN_1) when the
+      tap gesture fires with three or more fingers on the surface.
+
+      The device has no dedicated three-finger tap gesture, so this reuses the
+      chip's two-finger tap detection and distinguishes the two by the finger
+      count reported alongside it. Requires two-finger-tap to be enabled, since
+      that is what makes the chip report the tap at all.
+
   scroll:
     type: boolean
     required: false

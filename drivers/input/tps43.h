@@ -205,6 +205,7 @@ struct tps43_config {
     bool single_tap;
     bool press_and_hold;
     bool two_finger_tap;
+    bool three_finger_tap;
     bool scroll;
     bool zoom;
     bool swipes;            
