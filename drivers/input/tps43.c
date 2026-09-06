@@ -17,6 +17,11 @@
 #include "tps43.h"
 
 LOG_MODULE_REGISTER(tps43, CONFIG_INPUT_LOG_LEVEL);
+
+/* Fallback limits for the software three-finger tap, used when tap-time and
+ * tap-distance are not set in devicetree. */
+#define TPS43_SW_TAP_TIME_MS  250
+#define TPS43_SW_TAP_DISTANCE 100
  
 /**
  * @brief Ends communication window with trackpad
@@ -398,6 +403,32 @@ static void tps43_work_handler(struct k_work *work) {
         drv_data->touching = is_touching;
         LOG_INF("Touch state changed: %s", is_touching ? "down" : "up");
         input_report_key(dev, INPUT_BTN_TOUCH, is_touching ? 1 : 0, true, K_FOREVER);
+
+        if (is_touching) {
+            drv_data->touch_start_ms = k_uptime_get();
+            drv_data->touch_max_fingers = num_fingers;
+            drv_data->touch_travel = 0;
+        } else if (config->three_finger_tap && drv_data->touch_max_fingers >= 3) {
+            int held_ms = (int)(k_uptime_get() - drv_data->touch_start_ms);
+            int max_ms = config->tap_time > 0 ? config->tap_time : TPS43_SW_TAP_TIME_MS;
+            int max_travel =
+                config->tap_distance > 0 ? config->tap_distance : TPS43_SW_TAP_DISTANCE;
+
+            if (held_ms <= max_ms && drv_data->touch_travel <= max_travel) {
+                LOG_INF("Three finger tap → MIDDLE BUTTON (%dms, travel=%d)", held_ms,
+                        drv_data->touch_travel);
+                input_report_key(dev, INPUT_BTN_2, 1, true, K_FOREVER);
+                input_report_key(dev, INPUT_BTN_2, 0, true, K_FOREVER);
+            } else {
+                LOG_INF("Three finger release ignored (%dms > %d, or travel %d > %d)", held_ms,
+                        max_ms, drv_data->touch_travel, max_travel);
+            }
+        }
+    } else if (is_touching) {
+        if (num_fingers > drv_data->touch_max_fingers) {
+            drv_data->touch_max_fingers = num_fingers;
+        }
+        drv_data->touch_travel += abs(rel_x) + abs(rel_y);
     }
 
     if (gestures_events[0] != 0 || gestures_events[1] != 0) {
@@ -414,13 +445,11 @@ static void tps43_work_handler(struct k_work *work) {
             tps43_handle_swipe(dev, rel_x, rel_y);
         }
         if (gestures_events[1] & TPS43_TWO_FINGER_TAP) {
-            // The chip has no dedicated three-finger tap gesture, but the
-            // finger count is read in the same block as the gesture bits, so
-            // a tap landing with a third finger down can be told apart here.
-            if (config->three_finger_tap && num_fingers >= 3) {
-                LOG_INF("Three finger tap → MIDDLE BUTTON");
-                input_report_key(dev, INPUT_BTN_2, 1, true, K_FOREVER);
-                input_report_key(dev, INPUT_BTN_2, 0, true, K_FOREVER);
+            // If a third finger was down at any point in this touch, the
+            // software three-finger tap owns it - otherwise a 3->2->0 release
+            // would fire both a right and a middle click.
+            if (config->three_finger_tap && drv_data->touch_max_fingers >= 3) {
+                LOG_INF("Two finger tap ignored (3+ fingers seen this touch)");
             } else {
                 LOG_INF("Two finger tap → RIGHT BUTTON (fingers=%d)", num_fingers);
                 input_report_key(dev, INPUT_BTN_1, 1, true, K_FOREVER);
