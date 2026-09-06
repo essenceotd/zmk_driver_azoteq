@@ -118,13 +118,17 @@ properties:
     type: boolean
     required: false
     description: |
-      Report a middle click (BTN_2) instead of a right click (BTN_1) when the
-      tap gesture fires with three or more fingers on the surface.
+      Report a middle click (BTN_2) on a three-finger tap.
 
-      The device has no dedicated three-finger tap gesture, so this reuses the
-      chip's two-finger tap detection and distinguishes the two by the finger
-      count reported alongside it. Requires two-finger-tap to be enabled, since
-      that is what makes the chip report the tap at all.
+      The device has no three-finger tap gesture and suppresses its own tap
+      gesture entirely once a third finger is down, so this is recognised in
+      software: a touch that reaches three or more fingers, is released within
+      the tap time limit, and accumulates less than the tap distance of
+      movement is reported as a middle click.
+
+      The limits come from tap-time and tap-distance when those are set,
+      otherwise 250ms and 100 units. Independent of two-finger-tap, though
+      enabling both gives right click on two fingers and middle on three.
 
   scroll:
     type: boolean

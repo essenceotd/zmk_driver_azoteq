@@ -277,6 +277,14 @@ struct tps43_drv_data {
      * accumulates instead of being silently dropped. */
     int32_t scroll_remainder_x;
     int32_t scroll_remainder_y;
+
+    /* Per-touch tracking for the software three-finger tap. The device
+     * suppresses its own tap gesture once a third finger is down, so the
+     * tap has to be recognised here from finger count, duration and
+     * accumulated movement across the touch. */
+    int64_t touch_start_ms;
+    int32_t touch_travel;
+    uint8_t touch_max_fingers;
 };
 
 int tps43_set_sleep(const struct device *dev, bool sleep);
