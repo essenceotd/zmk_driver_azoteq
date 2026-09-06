@@ -414,9 +414,18 @@ static void tps43_work_handler(struct k_work *work) {
             tps43_handle_swipe(dev, rel_x, rel_y);
         }
         if (gestures_events[1] & TPS43_TWO_FINGER_TAP) {
-            LOG_INF("Two finger tap → RIGHT BUTTON");
-            input_report_key(dev, INPUT_BTN_1, 1, true, K_FOREVER);  
-            input_report_key(dev, INPUT_BTN_1, 0, true, K_FOREVER); 
+            // The chip has no dedicated three-finger tap gesture, but the
+            // finger count is read in the same block as the gesture bits, so
+            // a tap landing with a third finger down can be told apart here.
+            if (config->three_finger_tap && num_fingers >= 3) {
+                LOG_INF("Three finger tap → MIDDLE BUTTON");
+                input_report_key(dev, INPUT_BTN_2, 1, true, K_FOREVER);
+                input_report_key(dev, INPUT_BTN_2, 0, true, K_FOREVER);
+            } else {
+                LOG_INF("Two finger tap → RIGHT BUTTON (fingers=%d)", num_fingers);
+                input_report_key(dev, INPUT_BTN_1, 1, true, K_FOREVER);
+                input_report_key(dev, INPUT_BTN_1, 0, true, K_FOREVER);
+            }
         }
         if ((gestures_events[0] & TPS43_PRESS_AND_HOLD) && (!(is_drag_active))) {
             LOG_INF("Press and hold detected - DRAG (HOLD LEFT BUTTON)");
@@ -1425,6 +1434,7 @@ static int tps43_init(const struct device *dev) {
         .single_tap = DT_INST_PROP(inst, single_tap),                                                \
         .press_and_hold = DT_INST_PROP(inst, press_and_hold),                                        \
         .two_finger_tap = DT_INST_PROP(inst, two_finger_tap),                                        \
+        .three_finger_tap = DT_INST_PROP(inst, three_finger_tap),                                    \
         .scroll = DT_INST_PROP(inst, scroll),                                                        \
         .zoom = DT_INST_PROP(inst, zoom),                                                            \
         .swipes = DT_INST_PROP(inst, swipes),                                                        \
