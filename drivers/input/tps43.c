@@ -458,7 +458,13 @@ static void tps43_work_handler(struct k_work *work) {
                 if (config->invert_scroll_x) {
                     rel_x = -rel_x;
                 }
-                int16_t wheel = (rel_x * config->scroll_sensitivity) / 100;
+                // Accumulate the scaled delta with whatever fractional part
+                // was left over from the previous report, so slow movement
+                // isn't silently truncated to a 0 wheel delta every time.
+                int32_t accum = (int32_t)rel_x * config->scroll_sensitivity +
+                                 drv_data->scroll_remainder_x;
+                int16_t wheel = (int16_t)(accum / 100);
+                drv_data->scroll_remainder_x = accum - ((int32_t)wheel * 100);
                 LOG_INF("Scrolling %d horizontally", wheel);
                 input_report_rel(dev, INPUT_REL_HWHEEL, wheel, true, K_FOREVER);
             } else {
@@ -466,7 +472,10 @@ static void tps43_work_handler(struct k_work *work) {
                 if (config->invert_scroll_y) {
                     rel_y = -rel_y;
                 }
-                int16_t wheel = (rel_y * config->scroll_sensitivity) / 100;
+                int32_t accum = (int32_t)rel_y * config->scroll_sensitivity +
+                                 drv_data->scroll_remainder_y;
+                int16_t wheel = (int16_t)(accum / 100);
+                drv_data->scroll_remainder_y = accum - ((int32_t)wheel * 100);
                 LOG_INF("Scrolling %d vertically", wheel);
                 input_report_rel(dev, INPUT_REL_WHEEL, wheel, true, K_FOREVER);
             }
