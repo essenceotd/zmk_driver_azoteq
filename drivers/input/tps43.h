@@ -267,8 +267,15 @@ struct tps43_drv_data {
     bool device_ready;
     bool initialized;
     bool drag_active;
-    bool suspended;         
-    bool touching;          
+    bool suspended;
+    bool touching;
+
+    /* Fractional scroll remainder carried across reports, in units of
+     * (raw_delta * scroll_sensitivity), so slow movement that would
+     * otherwise round down to a 0 wheel delta every report still
+     * accumulates instead of being silently dropped. */
+    int32_t scroll_remainder_x;
+    int32_t scroll_remainder_y;
 };
 
 int tps43_set_sleep(const struct device *dev, bool sleep);
